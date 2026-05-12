@@ -22,6 +22,15 @@ type Secret struct {
 	BurnOnRead       bool
 }
 
+// Storage defines the set of operations on secrets.
+// Using an interface allows swapping the real DB with a mock in tests.
+type Storage interface {
+    SaveSecret(encryptedContent []byte, expiresAt *time.Time, burnOnRead bool) (string, error)
+    GetSecret(id string) (*Secret, error)
+    DeleteSecret(id string) error
+    DeleteExpired() error
+}
+
 // Connect opens a connection pool using DATABASE_URL from the environment
 func Connect() (*DB, error) {
 	url := os.Getenv("DATABASE_URL")
