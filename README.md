@@ -4,12 +4,12 @@ A zero-knowledge secret sharing service built with Go. Secrets are encrypted cli
 
 ## How it works
 
-1. **Create** — the client sends a secret via `POST /secrets`. The server generates a random AES-256 key, encrypts the content, stores only the ciphertext, and returns the `id` + `key` to the caller.
-2. **Share** — the caller shares a link containing both `id` and `key`. Since the key is never stored on the server, only someone with the full link can read the secret.
+1. **Create** — the client sends a secret via `POST /secrets`. The server generates a random AES-256 key, encrypts the content, stores only the ciphertext, and returns a single `url` field containing the complete shareable link (incorporating the secret ID and decryption key) to the caller.
+2. **Share** — the caller shares the returned link. Since the key is never stored on the server, only someone with the full link can read the secret.
 3. **Read** — on first access the server decrypts the content on the fly, returns it, and immediately deletes the record (burn-on-read). A background worker also purges any time-expired secrets every 5 minutes.
 
 ```
-POST /secrets          → { id, key }
+POST /secrets          → { url }
 GET  /secrets/{id}?key → { content }  (then deleted)
 ```
 
@@ -57,8 +57,7 @@ curl -X POST http://localhost:8080/secrets \
 Response:
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "key": "3f9a2c8b..."
+  "url": "http://localhost:8080/secrets/550e8400-e29b-41d4-a716-446655440000?key=3f9a2c8b..."
 }
 ```
 
@@ -86,7 +85,11 @@ The record is deleted immediately after this response. A second request returns 
 ```env
 DATABASE_URL=postgresql://postgres:[password]@[host]:6543/postgres
 APP_PORT=8080
+APP_BASE_URL=http://localhost:8080
 ```
+
+> [!IMPORTANT]
+> **Production / Render Configuration:** In production, remember to set the `APP_BASE_URL` environment variable (e.g. `https://fugax.onrender.com`) in your deployment environment (like the Render dashboard) so the system generates shareable URLs using your live domain.
 
 2. Create the `secrets` table in Supabase SQL Editor:
 
