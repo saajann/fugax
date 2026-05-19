@@ -3,7 +3,10 @@ package handler
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/saajann/fugax/internal/crypto"
@@ -11,10 +14,10 @@ import (
 )
 
 type Handler struct {
-	db *db.DB
+	db db.Storage
 }
 
-func New(db *db.DB) *Handler {
+func New(db db.Storage) *Handler {
 	return &Handler{db: db}
 }
 
@@ -33,8 +36,7 @@ type createSecretRequest struct {
 }
 
 type createSecretResponse struct {
-	ID  string `json:"id"`
-	Key string `json:"key"` // hex-encoded decryption key
+	URL string `json:"url"`
 }
 
 type readSecretResponse struct {
@@ -82,9 +84,16 @@ func (h *Handler) CreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	baseURL := os.Getenv("APP_BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	shareURL := fmt.Sprintf("%s/secrets/%s?key=%s", baseURL, id, hex.EncodeToString(key))
+
 	writeJSON(w, http.StatusCreated, createSecretResponse{
-		ID:  id,
-		Key: hex.EncodeToString(key),
+		URL: shareURL,
 	})
 }
 
